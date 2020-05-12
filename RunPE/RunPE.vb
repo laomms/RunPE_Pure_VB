@@ -7,11 +7,8 @@ Public Class RunPE
 
 
         Dim emulatedi386 As Boolean = False
-        Dim currentDir As String = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location)
-
         Dim baseAddress As IntPtr = Marshal.AllocHGlobal(lpBuffer.Length)
         Marshal.Copy(lpBuffer, 0, baseAddress, lpBuffer.Length)
-
         Dim dosHeader As IMAGE_DOS_HEADER = Marshal.PtrToStructure(baseAddress, GetType(IMAGE_DOS_HEADER))
         Dim nt_header_ptr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew)
         Dim ntHeaders As IMAGE_NT_HEADERS32 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS32))
