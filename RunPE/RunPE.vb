@@ -118,7 +118,7 @@ Public Class RunPE
         Else
             Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
             Marshal.WriteInt64(ptr, ImageBase64)
-            context64.ContextFlags = CONTEXT64_FLAGS.CONTEXT64_INTEGER
+            context64.ContextFlags = CONTEXT64_FLAGS.CONTEXT64_FULL
             If Not GetThreadContext(pi.hThread, context64) Then
                 GoTo retexit
             End If
