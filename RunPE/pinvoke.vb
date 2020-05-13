@@ -348,13 +348,11 @@ Module pinvoke
     Public Structure M128A
         Public High As ULong
         Public Low As Long
-
         Public Overrides Function ToString() As String
             Return String.Format("High:{0}, Low:{1}", Me.High, Me.Low)
         End Function
     End Structure
 
-    ' x64 save format
     <StructLayout(LayoutKind.Sequential, Pack:=16)>
     Public Structure XSAVE_FORMAT64
         Public ControlWord As UShort
@@ -370,18 +368,14 @@ Module pinvoke
         Public Reserved3 As UShort
         Public MxCsr As UInteger
         Public MxCsr_Mask As UInteger
-
         <MarshalAs(UnmanagedType.ByValArray, SizeConst:=8)>
         Public FloatRegisters() As M128A
-
         <MarshalAs(UnmanagedType.ByValArray, SizeConst:=16)>
         Public XmmRegisters() As M128A
-
         <MarshalAs(UnmanagedType.ByValArray, SizeConst:=96)>
         Public Reserved4() As Byte
     End Structure
 
-    ' x64 context structure
     <StructLayout(LayoutKind.Sequential, Pack:=16)>
     Public Structure CONTEXT64
         Public P1Home As ULong
@@ -390,10 +384,8 @@ Module pinvoke
         Public P4Home As ULong
         Public P5Home As ULong
         Public P6Home As ULong
-
         Public ContextFlags As CONTEXT_FLAGS
         Public MxCsr As UInteger
-
         Public SegCs As UShort
         Public SegDs As UShort
         Public SegEs As UShort
@@ -401,14 +393,12 @@ Module pinvoke
         Public SegGs As UShort
         Public SegSs As UShort
         Public EFlags As UInteger
-
         Public Dr0 As ULong
         Public Dr1 As ULong
         Public Dr2 As ULong
         Public Dr3 As ULong
         Public Dr6 As ULong
         Public Dr7 As ULong
-
         Public Rax As ULong
         Public Rcx As ULong
         Public Rdx As ULong
@@ -426,21 +416,16 @@ Module pinvoke
         Public R14 As ULong
         Public R15 As ULong
         Public Rip As ULong
-
         Public DUMMYUNIONNAME As XSAVE_FORMAT64
-
         <MarshalAs(UnmanagedType.ByValArray, SizeConst:=26)>
         Public VectorRegister() As M128A
         Public VectorControl As ULong
-
         Public DebugControl As ULong
         Public LastBranchToRip As ULong
         Public LastBranchFromRip As ULong
         Public LastExceptionToRip As ULong
         Public LastExceptionFromRip As ULong
     End Structure
-
-
     <StructLayoutAttribute(LayoutKind.Sequential)>
     Public Structure SECURITY_DESCRIPTOR
         Public revision As Byte
@@ -464,5 +449,4 @@ Module pinvoke
     <DllImport("advapi32.dll", SetLastError:=True)>
     Public Function SetSecurityDescriptorDacl(ByRef sd As SECURITY_DESCRIPTOR, ByVal daclPresent As Boolean, ByVal dacl As IntPtr, ByVal daclDefaulted As Boolean) As Boolean
     End Function
-
 End Module
