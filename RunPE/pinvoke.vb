@@ -1,4 +1,4 @@
-﻿Imports System.Runtime.InteropServices
+Imports System.Runtime.InteropServices
 Imports System.Security
 
 Module pinvoke
@@ -6,6 +6,9 @@ Module pinvoke
     Public Const PROCESS_VM_OPERATION As UInteger = &H8
     Public Const PROCESS_VM_WRITE As UInteger = &H20
     Public Const PROCESS_VM_READ As UInteger = &H10
+    Public Const PAGE_EXECUTE_READWRITE As UInteger = &H40
+    Public Const MEM_COMMIT As Long = &H1000
+    Public Const MEM_RESERVE As Long = &H2000
     Public Structure PROCESS_INFORMATION
         Public hProcess As IntPtr
         Public hThread As IntPtr
@@ -76,6 +79,13 @@ Module pinvoke
         Public OptionalHeader As IMAGE_OPTIONAL_HEADER32    '224 ubytes PE文件逻辑分布的信息
     End Structure
     <StructLayout(LayoutKind.Sequential)>
+    Public Structure IMAGE_NT_HEADERS64
+        Public Signature As UInteger                        '4   ubytes PE文件头标志：(e_lfanew)->‘PE\0\0’
+        Public FileHeader As IMAGE_FILE_HEADER              '20  ubytes PE文件物理分布的信息
+        Public OptionalHeader As IMAGE_OPTIONAL_HEADER64    '224 ubytes PE文件逻辑分布的信息
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential)>
     Public Structure IMAGE_OPTIONAL_HEADER32
         Public Magic As UShort                           ' 标志字, 0x0107表明这是一个ROM 映像,0x10B表明这是一个32位镜像文件。，0x20B表明这是一个64位镜像文件。
         Public MajorLinkerVersion As Byte                ' 链接程序的主版本号
@@ -122,6 +132,55 @@ Module pinvoke
         Public IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT As IMAGE_DATA_DIRECTORY   '绑定倒入表
         Public IMAGE_DIRECTORY_ENTRY_IAT As IMAGE_DATA_DIRECTORY            '导入地址表
         Public IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT As IMAGE_DATA_DIRECTORY   '延迟倒入表
+        Public IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR As IMAGE_DATA_DIRECTORY 'COM描述符
+    End Structure
+    <StructLayout(LayoutKind.Sequential)>
+    Public Structure IMAGE_OPTIONAL_HEADER64
+        Public Magic As UShort                           ' 标志字, 0x0107表明这是一个ROM 映像,0x10B表明这是一个32位镜像文件。，0x20B表明这是一个64位镜像文件。
+        Public MajorLinkerVersion As Byte                ' 链接程序的主版本号
+        Public MinorLinkerVersion As Byte                ' 链接程序的次版本号
+        Public SizeOfCode As UInteger                    ' 所有含代码的节的总大小
+        Public SizeOfInitializedData As UInteger         ' 所有含已初始化数据的节的总大小
+        Public SizeOfUninitializedData As UInteger       ' 所有含未初始化数据的节的大小
+        Public AddressOfEntryPoint As UInteger           ' 程序执行入口RVA
+        Public BaseOfCode As UInteger                    ' 代码的区块的起始RVA
+        'Public BaseOfData As UInteger                    ' 数据的区块的起始RVA
+        Public ImageBase As UInteger                     ' 程序的首选装载地址
+        Public SectionAlignment As UInteger              ' 内存中的区块的对齐大小
+        Public FileAlignment As UInteger                 ' 文件中的区块的对齐大小
+        Public MajorOperatingSystemVersion As UShort     ' 要求操作系统最低版本号的主版本号
+        Public MinorOperatingSystemVersion As UShort     ' 要求操作系统最低版本号的副版本号
+        Public MajorImageVersion As UShort               ' 可运行于操作系统的主版本号
+        Public MinorImageVersion As UShort               ' 可运行于操作系统的次版本号
+        Public MajorSubsystemVersion As UShort           ' 要求最低子系统版本的主版本号
+        Public MinorSubsystemVersion As UShort           ' 要求最低子系统版本的次版本号
+        Public Win32VersionValue As UInteger             ' 莫须有字段，不被病毒利用的话一般为0
+        Public SizeOfImage As UInteger                   ' 映像装入内存后的总尺寸
+        Public SizeOfHeaders As UInteger                 ' 所有头 + 区块表的尺寸大小
+        Public CheckSum As UInteger                      ' 映像的校检和
+        Public Subsystem As UShort                       ' 可执行文件期望的子系统
+        Public DllCharacteristics As UShort              ' DllMain()函数何时被调用，默认为 0
+        Public SizeOfStackReserve As ULong            ' 初始化时的栈大小
+        Public SizeOfStackCommit As ULong             ' 初始化时实际提交的栈大小
+        Public SizeOfHeapReserve As ULong             ' 初始化时保留的堆大小
+        Public SizeOfHeapCommit As ULong              ' 初始化时实际提交的堆大小
+        Public LoaderFlags As UInteger                   ' 与调试有关，默认为 0 
+        Public NumberOfRvaAndSizes As UInteger           ' 下边数据目录的项数，这个字段自Windows NT 发布以来一直是16
+        Public IMAGE_DIRECTORY_ENTRY_EXPORT As IMAGE_DATA_DIRECTORY         '导出函数表
+        Public IMAGE_DIRECTORY_ENTRY_IMPORT As IMAGE_DATA_DIRECTORY         '导入函数表
+        Public IMAGE_DIRECTORY_ENTRY_RESOURCE As IMAGE_DATA_DIRECTORY       '资源目录
+        Public IMAGE_DIRECTORY_ENTRY_EXCEPTION As IMAGE_DATA_DIRECTORY      '异常目录
+        Public IMAGE_DIRECTORY_ENTRY_SECURITY As IMAGE_DATA_DIRECTORY       '安全目录
+        Public IMAGE_DIRECTORY_ENTRY_BASERELOC As IMAGE_DATA_DIRECTORY      '重定位基本表
+        Public IMAGE_DIRECTORY_ENTRY_DEBUG As IMAGE_DATA_DIRECTORY          '调试目录
+        Public IMAGE_DIRECTORY_ENTRY_COPYRIGHT As IMAGE_DATA_DIRECTORY      '描述字符串
+        Public IMAGE_DIRECTORY_ENTRY_ARCHITECTURE As IMAGE_DATA_DIRECTORY   '机器值
+        Public IMAGE_DIRECTORY_ENTRY_GLOBALPTR As IMAGE_DATA_DIRECTORY      '线程本地存储
+        Public IMAGE_DIRECTORY_ENTRY_TLS As IMAGE_DATA_DIRECTORY            'TLS目录
+        Public IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG As IMAGE_DATA_DIRECTORY    '载入配置目录
+        Public IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT As IMAGE_DATA_DIRECTORY   '绑定入口
+        Public IMAGE_DIRECTORY_ENTRY_IAT As IMAGE_DATA_DIRECTORY            '导入地址表
+        Public IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT As IMAGE_DATA_DIRECTORY   '延迟入口
         Public IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR As IMAGE_DATA_DIRECTORY 'COM描述符
     End Structure
     <StructLayout(LayoutKind.Sequential)>
@@ -260,12 +319,12 @@ Module pinvoke
         Dim ContextFlags, MxCsr As UInteger
         Dim SegCs, SegDs, SegEs, SegFs, SegGs, SegSs As UShort
         Dim EFlags As UInteger
-        Dim Dr0, Dr1, Dr2, Dr3, Dr6, Dr7, Rax, Rcx, Rdx, Rbx, Rsp, Rbp, Rsi, Rdi, R8, R9, R10, R11, R12, R13, R14, R15, Rip As ULong
+        Dim Dr0, Dr1, Dr2, Dr3, Dr6, Dr7, Rax, Rcx, Rdx, Rbx, Rsp, Rbp, Rsi, Rdi, R8, R9, R10, R11, R12, R13, R14, R15, Rip As UInteger
         <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=2)> Dim Header As M128A()
         <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=8)> Dim Legacy As M128A()
         Dim Xmm0, Xmm1, Xmm2, Xmm3, Xmm4, Xmm5, Xmm6, Xmm7, Xmm8, Xmm9, Xmm10, Xmm11, Xmm12, Xmm13, Xmm14, Xmm15 As M128A
         <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=26)> Dim VectorRegister As M128A()
-        Dim VectorControl, DebugControl, LastBranchToRip, LastBranchFromRip, LastExceptionToRip, LastExceptionFromRip As ULong
+        Dim VectorControl, DebugControl, LastBranchToRip, LastBranchFromRip, LastExceptionToRip, LastExceptionFromRip As UInteger
     End Structure
 
     <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="GetThreadContext")>
