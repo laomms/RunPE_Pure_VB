@@ -145,7 +145,7 @@ Module pinvoke
         Public AddressOfEntryPoint As UInteger           ' 程序执行入口RVA
         Public BaseOfCode As UInteger                    ' 代码的区块的起始RVA
         'Public BaseOfData As UInteger                    ' 数据的区块的起始RVA
-        Public ImageBase As UInteger                     ' 程序的首选装载地址
+        Public ImageBase As ULong                    ' 程序的首选装载地址
         Public SectionAlignment As UInteger              ' 内存中的区块的对齐大小
         Public FileAlignment As UInteger                 ' 文件中的区块的对齐大小
         Public MajorOperatingSystemVersion As UShort     ' 要求操作系统最低版本号的主版本号
@@ -256,11 +256,21 @@ Module pinvoke
     <DllImport("kernel32.dll", SetLastError:=True)>
     Public Function CloseHandle(ByVal hObject As IntPtr) As Boolean
     End Function
+    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="ReadProcessMemory")>
+    Public Function ReadProcessMemory(ByVal hProcess As IntPtr, ByVal lpBaseAddress As IntPtr, ByRef lpBuffer As Object, ByVal dwSize As Integer, ByRef lpNumberOfBytesRead As Integer) As Boolean
+    End Function
+
+    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="ReadProcessMemory")>
+    Public Function ReadProcessMemory(ByVal hProcess As IntPtr, ByVal lpBaseAddress As IntPtr, ByRef lpBuffer As IntPtr, ByVal iSize As Integer, ByRef lpNumberOfBytesRead As Integer) As Boolean
+    End Function
     <DllImport("kernel32.dll", SetLastError:=True)>
     Public Function WriteProcessMemory(ByVal hProcess As IntPtr, ByVal lpBaseAddress As IntPtr, ByVal lpBuffer As IntPtr, ByVal nSize As Int32, ByRef lpNumberOfBytesWritten As IntPtr) As Boolean
     End Function
     <DllImport("kernel32.dll", SetLastError:=True)>
     Public Function WriteProcessMemory(ByVal hProcess As IntPtr, ByVal lpBaseAddress As IntPtr, ByVal lpBuffer() As Byte, ByVal nSize As Integer, ByRef lpNumberOfBytesWritten As IntPtr) As Boolean
+    End Function
+    <DllImport("kernel32", CharSet:=CharSet.Auto, SetLastError:=True)>
+    Public Function VirtualProtectEx(ByVal hProcess As IntPtr, ByVal lpAddress As IntPtr, ByVal dwSize As IntPtr, ByVal flNewProtect As UInteger, ByRef lpflOldProtect As UInteger) As Boolean
     End Function
     Public Enum ProcessAccessFlags As UInteger
         All = &H1F0FFF
@@ -312,21 +322,89 @@ Module pinvoke
         Dim Low As ULong
         Dim High As Long
     End Structure
-
     <StructLayout(LayoutKind.Sequential, Pack:=16)>
-    Structure CONTEXT64
-        Dim P1Home, P2Home, P3Home, P4Home, P5Home, P6Home As ULong
-        Dim ContextFlags, MxCsr As UInteger
-        Dim SegCs, SegDs, SegEs, SegFs, SegGs, SegSs As UShort
-        Dim EFlags As UInteger
-        Dim Dr0, Dr1, Dr2, Dr3, Dr6, Dr7, Rax, Rcx, Rdx, Rbx, Rsp, Rbp, Rsi, Rdi, R8, R9, R10, R11, R12, R13, R14, R15, Rip As UInteger
-        <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=2)> Dim Header As M128A()
-        <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=8)> Dim Legacy As M128A()
-        Dim Xmm0, Xmm1, Xmm2, Xmm3, Xmm4, Xmm5, Xmm6, Xmm7, Xmm8, Xmm9, Xmm10, Xmm11, Xmm12, Xmm13, Xmm14, Xmm15 As M128A
-        <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeConst:=26)> Dim VectorRegister As M128A()
-        Dim VectorControl, DebugControl, LastBranchToRip, LastBranchFromRip, LastExceptionToRip, LastExceptionFromRip As UInteger
+    Friend Structure CONTEXT64
+        Public P1Home As ULong
+        Public P2Home As ULong
+        Public P3Home As ULong
+        Public P4Home As ULong
+        Public P5Home As ULong
+        Public P6Home As ULong
+
+        Public ContextFlags As CONTEXT_FLAGS
+        Public MxCsr As UInteger
+
+        Public SegCs As UShort
+        Public SegDs As UShort
+        Public SegEs As UShort
+        Public SegFs As UShort
+        Public SegGs As UShort
+        Public SegSs As UShort
+        Public EFlags As UInteger
+
+        Public Dr0 As ULong
+        Public Dr1 As ULong
+        Public Dr2 As ULong
+        Public Dr3 As ULong
+        Public Dr6 As ULong
+        Public Dr7 As ULong
+
+        Public Rax As ULong
+        Public Rcx As ULong
+        Public Rdx As ULong
+        Public Rbx As ULong
+        Public Rsp As ULong
+        Public Rbp As ULong
+        Public Rsi As ULong
+        Public Rdi As ULong
+        Public R8 As ULong
+        Public R9 As ULong
+        Public R10 As ULong
+        Public R11 As ULong
+        Public R12 As ULong
+        Public R13 As ULong
+        Public R14 As ULong
+        Public R15 As ULong
+        Public Rip As ULong
+
+        Public DUMMYUNIONNAME As XSAVE_FORMAT64
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=26)>
+        Public VectorRegister() As M128A
+        Public VectorControl As ULong
+
+        Public DebugControl As ULong
+        Public LastBranchToRip As ULong
+        Public LastBranchFromRip As ULong
+        Public LastExceptionToRip As ULong
+        Public LastExceptionFromRip As ULong
     End Structure
 
+    <StructLayout(LayoutKind.Sequential, Pack:=16)>
+    Friend Structure XSAVE_FORMAT64
+        Public ControlWord As UShort
+        Public StatusWord As UShort
+        Public TagWord As Byte
+        Public Reserved1 As Byte
+        Public ErrorOpcode As UShort
+        Public ErrorOffset As UInteger
+        Public ErrorSelector As UShort
+        Public Reserved2 As UShort
+        Public DataOffset As UInteger
+        Public DataSelector As UShort
+        Public Reserved3 As UShort
+        Public MxCsr As UInteger
+        Public MxCsr_Mask As UInteger
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=8)>
+        Public FloatRegisters() As M128A
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=16)>
+        Public XmmRegisters() As M128A
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=96)>
+        Public Reserved4() As Byte
+    End Structure
     <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="GetThreadContext")>
     Public Function GetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
     End Function
@@ -378,4 +456,5 @@ Module pinvoke
     <DllImport("advapi32.dll", SetLastError:=True)>
     Public Function SetSecurityDescriptorDacl(ByRef sd As SECURITY_DESCRIPTOR, ByVal daclPresent As Boolean, ByVal dacl As IntPtr, ByVal daclDefaulted As Boolean) As Boolean
     End Function
+
 End Module
