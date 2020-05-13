@@ -310,20 +310,80 @@ Module pinvoke
     End Structure
 
     <StructLayout(LayoutKind.Sequential)>
-    Structure CONTEXT32
+    Public Structure CONTEXT32
         Dim ContextFlags, Dr0, Dr1, Dr2, Dr3, Dr6, Dr7 As UInteger
         Dim FloatSave As FLOATING_SAVE_AREA
         Dim SegGs, SegFs, SegEs, SegDs, Edi, Esi, Ebx, Edx, Ecx, Eax, Ebp, Eip, SegCs, EFlags, Esp, SegSs As UInteger
         <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValArray, SizeConst:=512)> Dim ExtendedRegisters As Byte()
     End Structure
 
-    <StructLayout(LayoutKind.Sequential, Pack:=16)>
-    Structure M128A
-        Dim Low As ULong
-        Dim High As Long
+    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64GetThreadContext")>
+    Public Function Wow64GetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
+    End Function
+    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64SetThreadContext")>
+    Public Function Wow64SetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
+    End Function
+    <DllImport("kernel32.dll", SetLastError:=True)>
+    Public Function GetThreadContext(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
+    End Function
+    <DllImport("kernel32.dll", SetLastError:=True)>
+    Public Function SetThreadContext(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
+    End Function
+
+    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="IsWow64Process")>
+    Public Function IsWow64Process(ByVal hProcess As IntPtr, ByRef Wow64Process As Boolean) As Boolean
+    End Function
+    Public Enum CONTEXT64_FLAGS As UInteger
+        CONTEXT64_AMD64 = &H100000
+        CONTEXT64_CONTROL = CONTEXT64_AMD64 Or &H1
+        CONTEXT64_INTEGER = CONTEXT64_AMD64 Or &H2
+        CONTEXT64_SEGMENTS = CONTEXT64_AMD64 Or &H4
+        CONTEXT64_FLOATING_POINT = CONTEXT64_AMD64 Or &H8
+        CONTEXT64_DEBUG_REGISTERS = CONTEXT64_AMD64 Or &H10
+        CONTEXT64_FULL = CONTEXT64_CONTROL Or CONTEXT64_INTEGER Or CONTEXT64_FLOATING_POINT
+        CONTEXT64_ALL = CONTEXT64_CONTROL Or CONTEXT64_INTEGER Or CONTEXT64_SEGMENTS Or CONTEXT64_FLOATING_POINT Or CONTEXT64_DEBUG_REGISTERS
+    End Enum
+    ' x64 m128a
+    <StructLayout(LayoutKind.Sequential)>
+    Public Structure M128A
+        Public High As ULong
+        Public Low As Long
+
+        Public Overrides Function ToString() As String
+            Return String.Format("High:{0}, Low:{1}", Me.High, Me.Low)
+        End Function
     End Structure
+
+    ' x64 save format
     <StructLayout(LayoutKind.Sequential, Pack:=16)>
-    Friend Structure CONTEXT64
+    Public Structure XSAVE_FORMAT64
+        Public ControlWord As UShort
+        Public StatusWord As UShort
+        Public TagWord As Byte
+        Public Reserved1 As Byte
+        Public ErrorOpcode As UShort
+        Public ErrorOffset As UInteger
+        Public ErrorSelector As UShort
+        Public Reserved2 As UShort
+        Public DataOffset As UInteger
+        Public DataSelector As UShort
+        Public Reserved3 As UShort
+        Public MxCsr As UInteger
+        Public MxCsr_Mask As UInteger
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=8)>
+        Public FloatRegisters() As M128A
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=16)>
+        Public XmmRegisters() As M128A
+
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=96)>
+        Public Reserved4() As Byte
+    End Structure
+
+    ' x64 context structure
+    <StructLayout(LayoutKind.Sequential, Pack:=16)>
+    Public Structure CONTEXT64
         Public P1Home As ULong
         Public P2Home As ULong
         Public P3Home As ULong
@@ -380,59 +440,7 @@ Module pinvoke
         Public LastExceptionFromRip As ULong
     End Structure
 
-    <StructLayout(LayoutKind.Sequential, Pack:=16)>
-    Friend Structure XSAVE_FORMAT64
-        Public ControlWord As UShort
-        Public StatusWord As UShort
-        Public TagWord As Byte
-        Public Reserved1 As Byte
-        Public ErrorOpcode As UShort
-        Public ErrorOffset As UInteger
-        Public ErrorSelector As UShort
-        Public Reserved2 As UShort
-        Public DataOffset As UInteger
-        Public DataSelector As UShort
-        Public Reserved3 As UShort
-        Public MxCsr As UInteger
-        Public MxCsr_Mask As UInteger
 
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=8)>
-        Public FloatRegisters() As M128A
-
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=16)>
-        Public XmmRegisters() As M128A
-
-        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=96)>
-        Public Reserved4() As Byte
-    End Structure
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="GetThreadContext")>
-    Public Function GetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="SetThreadContext")>
-    Public Function SetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="GetThreadContext")>
-    Public Function GetThreadContext64(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="SetThreadContext")>
-    Public Function SetThreadContext64(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64GetThreadContext")>
-    Public Function Wow64GetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64SetThreadContext")>
-    Public Function Wow64SetThreadContext32(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT32) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64GetThreadContext")>
-    Public Function Wow64GetThreadContext64(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
-    End Function
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="Wow64SetThreadContext")>
-    Public Function Wow64SetThreadContext64(ByVal hThread As IntPtr, ByRef lpContext As CONTEXT64) As Boolean
-    End Function
-
-    <DllImport("kernel32.dll", SetLastError:=True, EntryPoint:="IsWow64Process")>
-    Public Function IsWow64Process(ByVal hProcess As IntPtr, ByRef Wow64Process As Boolean) As Boolean
-    End Function
     <StructLayoutAttribute(LayoutKind.Sequential)>
     Public Structure SECURITY_DESCRIPTOR
         Public revision As Byte
